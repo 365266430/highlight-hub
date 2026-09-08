@@ -33,6 +33,7 @@ public class TaskEventListener {
 
     @EventListener
     public void onTaskSucceeded(TaskService.TaskSucceededEvent event) {
+        @SuppressWarnings("unchecked")
         Map<String, Object> result = event.result() instanceof Map<?, ?> m ? (Map<String, Object>) m : null;
         switch (event.type()) {
             case "PROBE" -> {
@@ -62,7 +63,11 @@ public class TaskEventListener {
                 log.info("ANALYZE task {} succeeded; event routing added in phase 2", event.taskId());
             }
             case "GENERATE_CANDIDATES" -> log.info("GENERATE_CANDIDATES task {} succeeded", event.taskId());
-            case "CLEANUP" -> log.info("CLEANUP task {} completed for {}", event.taskId(), event.inputRef());
+            case "CLEANUP" -> {
+                Long requestedBy = result != null && result.get("requestedBy") instanceof Number n
+                        ? n.longValue() : null;
+                mediaService.finalizeDeletion(event.inputRef(), requestedBy);
+            }
             default -> log.warn("no listener for task type {}", event.type());
         }
     }

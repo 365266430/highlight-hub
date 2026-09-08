@@ -8,6 +8,7 @@ import com.highlighthub.common.BusinessException;
 import com.highlighthub.common.ErrorCodes;
 import com.highlighthub.common.Utils;
 import com.highlighthub.storage.LocalStorageService;
+import com.highlighthub.user.UserMapper;
 import com.highlighthub.storage.StorageService;
 import com.highlighthub.task.TaskService;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ public class MediaService {
     private final MediaAssetMapper assetMapper;
     private final LocalStorageService storage;
     private final TaskService taskService;
+    private final com.highlighthub.user.UserMapper userMapper;
 
     @Value("${highlight-hub.media.preview.max-height}")
     private int previewMaxHeight;
@@ -54,11 +56,13 @@ public class MediaService {
     private String ffprobePath;
 
     public MediaService(MediaMapper mediaMapper, MediaAssetMapper assetMapper,
-                        LocalStorageService storage, TaskService taskService) {
+                        LocalStorageService storage, TaskService taskService,
+                        com.highlighthub.user.UserMapper userMapper) {
         this.mediaMapper = mediaMapper;
         this.assetMapper = assetMapper;
         this.storage = storage;
         this.taskService = taskService;
+        this.userMapper = userMapper;
     }
 
     public MediaEntity requireOwnedMedia(String mediaId, Long userId) {
@@ -112,8 +116,10 @@ public class MediaService {
         MediaEntity m = requireOwnedMedia(mediaId, userId);
         // soft delete first; physical cleanup runs as a task
         mediaMapper.transition(mediaId, m.getStatus(), "DELETING");
-        taskService.create("CLEANUP", null, mediaId, null,
-                Map.of("mediaId", mediaId, "requestedBy", userId), 5);
+        Map<String, Object> cleanupPayload = new LinkedHashMap<>();
+        cleanupPayload.put("mediaId", mediaId);
+        cleanupPayload.put("requestedBy", userId);
+        taskService.create("CLEANUP", null, mediaId, null, cleanupPayload, 5);
         log.info("media {} marked DELETING by user {}", mediaId, userId);
     }
 
@@ -145,9 +151,40 @@ public class MediaService {
         mediaMapper.updateById(m);
 
         // pipeline continues after a successful probe
-        taskService.create("PREVIEW", m.getOwnerId(), mediaId, null, Map.of("mediaId", mediaId));
-        taskService.create("THUMBNAIL", m.getOwnerId(), mediaId, null, Map.of("mediaId", mediaId));
+        Map<String, Object> previewPayload = new LinkedHashMap<>(Map.of("mediaId", mediaId));
+        previewPayload.put("preview", previewParams());
+        taskService.create("PREVIEW", m.getOwnerId(), mediaId, null, previewPayload);
+        Map<String, Object> thumbPayload = new LinkedHashMap<>(Map.of("mediaId", mediaId));
+        thumbPayload.put("thumbnail", thumbnailParams());
+        taskService.create("THUMBNAIL", m.getOwnerId(), mediaId, null, thumbPayload);
         log.info("media {} READY: {}x{} {} ms", mediaId, m.getWidth(), m.getHeight(), m.getDurationMs());
+    }
+
+    /** invoked after the physical cleanup task succeeded: close out the deletion */
+    public void finalizeDeletion(String mediaId, Long requestedBy) {
+        MediaEntity m = mediaMapper.findById(mediaId);
+        if (m == null) {
+            log.warn("cleanup for unknown media {} ignored", mediaId);
+            return;
+        }
+        if (!"DELETING".equals(m.getStatus())) {
+            log.warn("cleanup for media {} in status {} ignored", mediaId, m.getStatus());
+            return;
+        }
+        m.setStatus("DELETED");
+        m.setUpdatedAt(Utils.utcNow());
+        mediaMapper.updateById(m);
+        // assets become DELETED records; original/preview/thumbnail files were removed by the worker
+        List<MediaAssetEntity> assets = assetMapper.selectList(
+                new QueryWrapper<MediaAssetEntity>().eq("media_id", mediaId));
+        for (MediaAssetEntity a : assets) {
+            a.setStatus("DELETED");
+            assetMapper.updateById(a);
+        }
+        if (requestedBy != null) {
+            userMapper.releaseQuota(m.getOwnerId(), m.getFileSize());
+        }
+        log.info("media {} fully deleted; released {} bytes of quota", mediaId, m.getFileSize());
     }
 
     public void applyPreviewResult(String mediaId, Map<String, Object> result) {
