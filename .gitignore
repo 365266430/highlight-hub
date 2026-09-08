@@ -1,0 +1,26 @@
+# Build artifacts
+backend/target/
+frontend/node_modules/
+frontend/dist/
+media-worker/.venv/
+media-worker/__pycache__/
+media-worker/**/__pycache__/
+media-worker/.pytest_cache/
+
+# Runtime data (never commit user media)
+data/
+*.log
+logs/
+
+# Local env
+.env
+!/.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store

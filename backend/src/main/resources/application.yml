@@ -1,0 +1,118 @@
+spring:
+  application:
+    name: highlight-hub-backend
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:highlight_hub}?useUnicode=true&characterEncoding=utf8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+    username: ${DB_USER:highlight}
+    password: ${DB_PASSWORD:highlight_dev_2026}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      enabled: false
+  jackson:
+    time-zone: UTC
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${COOKIE_SECURE:false}
+        name: HUBSESSION
+      timeout: 7d
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.highlighthub: INFO
+    org.springframework.security: WARN
+
+highlight-hub:
+  storage:
+    root: ${STORAGE_ROOT:./data}
+  worker:
+    token: ${WORKER_TOKEN:dev-worker-token-change-me}
+  upload:
+    max-file-size-bytes: ${UPLOAD_MAX_FILE_BYTES:2147483648}
+    min-chunk-size-bytes: 1048576
+    max-chunk-size-bytes: 16777216
+    max-chunk-count: 4096
+    session-ttl-minutes: 2880
+  quota:
+    default-user-quota-bytes: ${DEFAULT_USER_QUOTA_BYTES:2147483648}
+  task:
+    default-lease-seconds: 120
+    max-attempts: 3
+    lease-sweep-interval-seconds: 30
+    analysis-concurrency: 2
+    render-concurrency: 1
+    max-per-user-pending: 10
+    render-max-output-bytes: ${RENDER_MAX_OUTPUT_BYTES:2147483648}
+    render-max-duration-seconds: 1800
+  project:
+    max-segments: 50
+    max-total-output-seconds: 1800
+    max-output-height: 2160
+    max-caption-chars: 200
+  media:
+    preview:
+      max-height: 720
+      crf: 28
+    thumbnail:
+      interval-seconds: 5
+      tile-columns: 10
+      tile-rows: 10
+      frame-width: 320
+  ffmpeg:
+    path: ${FFMPEG_PATH:ffmpeg}
+    ffprobe-path: ${FFPROBE_PATH:ffprobe}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:mysql://${TEST_DB_HOST:127.0.0.1}:${TEST_DB_PORT:3306}/${TEST_DB_NAME:highlight_hub_test}?useUnicode=true&characterEncoding=utf8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+    username: ${TEST_DB_USER:highlight}
+    password: ${TEST_DB_PASSWORD:highlight_dev_2026}
+  flyway:
+    clean-disabled: false
+
+highlight-hub:
+  storage:
+    root: ./target/test-data
+  task:
+    lease-sweep-interval-seconds: 2
