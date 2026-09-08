@@ -32,6 +32,14 @@ public class HighlightController {
         return highlightService.viewRun(run);
     }
 
+    /** existing runs for an analysis so a revisiting user sees prior candidates */
+    @GetMapping("/analyses/{id}/highlight-runs")
+    public List<Map<String, Object>> runs(@PathVariable String id) {
+        Long userId = SecurityUtils.currentUserId();
+        return highlightService.listRunsOfAnalysis(id, userId).stream()
+                .map(highlightService::viewRun).toList();
+    }
+
     @GetMapping("/highlight-runs/{id}/candidates")
     public List<Map<String, Object>> candidates(@PathVariable String id) {
         highlightService.requireOwnedRun(id, SecurityUtils.currentUserId());

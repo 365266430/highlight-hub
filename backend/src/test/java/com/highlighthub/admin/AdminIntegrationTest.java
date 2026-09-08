@@ -129,6 +129,53 @@ class AdminIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void uploadThroughputAdminRetryAndWorkerDiskFields() {
+        seedAdmin();
+        // a completed upload session: throughput = bytes / elapsed seconds
+        jdbc.update("""
+                INSERT INTO upload_sessions (id, user_id, original_filename, declared_size, chunk_size,
+                  expected_chunk_count, status, reserved_bytes, received_bytes, expires_at, created_at, updated_at)
+                VALUES ('us-1', 1, 'a.mp4', 1000000, 8388608, 1, 'COMPLETED', 1000000, 1000000,
+                  UTC_TIMESTAMP(3) + INTERVAL 1 HOUR, UTC_TIMESTAMP(3) - INTERVAL 10 SECOND, UTC_TIMESTAMP(3))
+                """);
+        // a failed CLEANUP task an admin can retry
+        jdbc.update("""
+                INSERT INTO tasks (id, owner_id, type, input_ref, status, attempt, max_attempts, progress,
+                  next_run_at, error_code, created_at, updated_at)
+                VALUES ('t-cl', NULL, 'CLEANUP', 'm-x', 'FAILED', 3, 3, 0, UTC_TIMESTAMP(3),
+                  'STORAGE_DELETE_FAILED', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+                """);
+        // worker ping carrying measured disk/uptime
+        org.springframework.http.HttpHeaders wh = new org.springframework.http.HttpHeaders();
+        wh.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        wh.add("X-Worker-Token", "dev-worker-token-change-me");
+        var ping = rest.exchange("/internal/tasks/ping", org.springframework.http.HttpMethod.POST,
+                new org.springframework.http.HttpEntity<>(Map.of("workerId", "worker-disk",
+                        "diskFreeBytes", 123456789, "uptimeSeconds", 42), wh), String.class);
+        assertThat(ping.getStatusCode().value()).isEqualTo(200);
+
+        Client c = client();
+        c.registerAndLogin("plainuser6", "password123");
+        c.post("/api/auth/login", Map.of("username", "admin", "password", "password123"));
+        Map<String, Object> stats = json(c.get("/api/admin/stats"));
+        List<Map<String, Object>> throughput = (List<Map<String, Object>>) stats.get("uploadThroughput");
+        assertThat(throughput.get(0).get("sessions")).isEqualTo(1);
+        assertThat(((Number) throughput.get(0).get("avg_bps")).doubleValue()).isGreaterThan(0);
+        assertThat((Integer) stats.get("uploadAbandoned")).isZero();
+        List<Map<String, Object>> workers = (List<Map<String, Object>>) stats.get("workers");
+        Map<String, Object> w = workers.stream()
+                .filter(x -> "worker-disk".equals(x.get("worker_id"))).findFirst().orElseThrow();
+        assertThat(((Number) w.get("disk_free_bytes")).longValue()).isEqualTo(123456789);
+        assertThat(((Number) w.get("uptime_seconds")).longValue()).isEqualTo(42);
+
+        // admin retries the failed CLEANUP task -> back to QUEUED
+        var retried = c.post("/api/admin/tasks/t-cl/retry", Map.of());
+        assertThat(retried.getStatusCode().value()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT status FROM tasks WHERE id='t-cl'", String.class))
+                .isEqualTo("QUEUED");
+    }
+
+    @Test
     void adapterStatusLifecycleGatesVerifiedBehindAttestation() {
         seedAdmin();
         seedAdapterVersion();

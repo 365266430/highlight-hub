@@ -1,5 +1,6 @@
 """Worker configuration from environment variables (see .env.example)."""
 import os
+import time
 
 
 def _int(name: str, default: int) -> int:
@@ -12,6 +13,7 @@ def _int(name: str, default: int) -> int:
 JAVA_BASE_URL = os.environ.get("JAVA_BASE_URL", "http://127.0.0.1:8080")
 WORKER_TOKEN = os.environ.get("WORKER_TOKEN", "dev-worker-token-change-me")
 WORKER_ID = os.environ.get("WORKER_ID", "") or f"worker-{os.getpid()}"
+STARTED_AT = time.time()
 
 STORAGE_ROOT = os.path.abspath(os.environ.get("STORAGE_ROOT", os.path.join(os.getcwd(), "..", "data")))
 

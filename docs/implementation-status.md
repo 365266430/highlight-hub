@@ -75,7 +75,12 @@
   worker_status 表记录（V2 迁移），管理统计展示在线 Worker；渲染实时率
   （执行秒/成片秒）从 render_jobs.output_duration_ms 实测计算，管理页展示。
 - 多候选建工程（第四节核心流程）：时间轴页可将全部已保留候选按时间序合并为
-  一个多片段工程（"用户选中三个片段"的完整落地）。
+  一个多片段工程（"用户选中三个片段"的完整落地）；浏览器 GUI 实测 2 候选 →
+  编辑器 2 片段。
+- 修复：带 ?analysis= 参数进入时间轴时不加载 media 导致整页空白
+  （根节点 v-if 恒假）；修复后刷新/直达均可恢复事件与候选状态。
+- 上传吞吐与放弃数（第二十一节）：管理统计按已完成会话实测
+  字节/耗时，取消与过期会话计为放弃数。
 - 初始管理员账号通过 `HIGHLIGHT_HUB_ADMIN_INITIAL_PASSWORD` 环境变量注入
   （仅启动时无管理员才创建，密码不硬编码不入日志）。
 - 已修复：集成测试基类补充 `@ActiveProfiles("test")`——此前测试套件误指向开发库
@@ -98,12 +103,13 @@
   推送若因凭据失败将如实记录。
 
 ## 已执行测试（汇总见 docs/test-report.md）
-- backend `mvn test`：56/56 通过（真实 MySQL，独立测试库）
+- backend `mvn test`：57/57 通过（真实 MySQL，独立测试库）
 - media-worker `pytest`：15/15 通过（合成夹具 + 真实 FFmpeg/OCR）
 - `scripts/run_e2e.py`：31/31 通过（两轮）
 - `scripts/run_e2e_phase2.py`：13/13 通过（两轮）
 - `scripts/run_e2e_phase3.py`：9/9 通过（SSE + CROP/打码）
 - `scripts/run_e2e_admin.py`：10/10 通过（管理面 + 访问控制 + 状态自恢复，幂等可重复）
+- 浏览器 GUI 实测：多候选建工程（2 候选 → 2 片段编辑器）、SSE 任务中心、管理后台页面
 - 前端 GUI 冒烟：通过
 
 ## 下一条具体操作

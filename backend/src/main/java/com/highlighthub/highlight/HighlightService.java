@@ -181,6 +181,11 @@ public class HighlightService {
         return c;
     }
 
+    public List<HighlightRunEntity> listRunsOfAnalysis(String analysisRunId, Long ownerId) {
+        analysisService.requireOwned(analysisRunId, ownerId);
+        return runMapper.listByAnalysis(analysisRunId);
+    }
+
     public List<HighlightCandidateEntity> listCandidatesOfRun(String runId) {
         return candidateMapper.listByRun(runId);
     }

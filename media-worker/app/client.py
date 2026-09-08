@@ -67,10 +67,16 @@ class JavaClient:
 
     def ping(self, active_task_id: str | None = None) -> None:
         """Worker-loop liveness ping (best effort; used for admin observability)."""
+        import shutil
+        import time
+        body = {"workerId": self.worker_id, "activeTaskId": active_task_id}
         try:
-            self.session.post(f"{self.base_url}/internal/tasks/ping",
-                              json={"workerId": self.worker_id, "activeTaskId": active_task_id},
-                              timeout=5)
+            body["diskFreeBytes"] = shutil.disk_usage(config.STORAGE_ROOT).free
+        except OSError:
+            pass
+        body["uptimeSeconds"] = int(time.time() - config.STARTED_AT)
+        try:
+            self.session.post(f"{self.base_url}/internal/tasks/ping", json=body, timeout=5)
         except requests.RequestException:
             pass
 

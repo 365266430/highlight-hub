@@ -205,6 +205,8 @@ export const eventApi = {
 export const highlightApi = {
   createRun: (analysisId: string, params: Record<string, unknown>) =>
     http.post(`/api/analyses/${analysisId}/highlight-runs`, params),
+  runs: (analysisId: string) =>
+    http.get<{ id: string }[]>(`/api/analyses/${analysisId}/highlight-runs`),
   candidates: (runId: string) =>
     http.get<Candidate[]>(`/api/highlight-runs/${runId}/candidates`),
   decide: (candidateId: string, status: 'ACCEPTED' | 'REJECTED' | 'PENDING') =>

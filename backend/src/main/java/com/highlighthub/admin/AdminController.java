@@ -34,13 +34,16 @@ public class AdminController {
     private final UserMapper userMapper;
     private final AdapterDefinitionMapper definitionMapper;
     private final AdapterVersionMapper versionMapper;
+    private final com.highlighthub.task.TaskService taskService;
 
     public AdminController(JdbcTemplate jdbc, UserMapper userMapper,
-                           AdapterDefinitionMapper definitionMapper, AdapterVersionMapper versionMapper) {
+                           AdapterDefinitionMapper definitionMapper, AdapterVersionMapper versionMapper,
+                           com.highlighthub.task.TaskService taskService) {
         this.jdbc = jdbc;
         this.userMapper = userMapper;
         this.definitionMapper = definitionMapper;
         this.versionMapper = versionMapper;
+        this.taskService = taskService;
     }
 
     /** allowed adapter version lifecycle transitions */
@@ -82,9 +85,17 @@ public class AdminController {
                 "SELECT COUNT(*) n, COALESCE(SUM(used_bytes),0) used_bytes FROM users"));
         out.put("mediaByStatus", jdbc.queryForList(
                 "SELECT status, COUNT(*) n FROM media GROUP BY status"));
+        // upload throughput: measured end-to-end (chunks upload + merge) per completed session
+        out.put("uploadThroughput", jdbc.queryForList(
+                "SELECT COUNT(*) sessions, COALESCE(SUM(declared_size),0) bytes, " +
+                "ROUND(AVG(declared_size / GREATEST(TIMESTAMPDIFF(MICROSECOND, created_at, updated_at)/1000000.0, 0.001))) avg_bps " +
+                "FROM upload_sessions WHERE status='COMPLETED'"));
+        // abandoned uploads count as failures of the upload path
+        out.put("uploadAbandoned", jdbc.queryForObject(
+                "SELECT COUNT(*) FROM upload_sessions WHERE status IN ('CANCELLED','EXPIRED')", Integer.class));
         // worker liveness (pinged within the last 60 seconds = online)
         out.put("workers", jdbc.queryForList(
-                "SELECT worker_id, active_task_id, " +
+                "SELECT worker_id, active_task_id, disk_free_bytes, uptime_seconds, " +
                 "(last_heartbeat >= UTC_TIMESTAMP(3) - INTERVAL 60 SECOND) online, last_heartbeat " +
                 "FROM worker_status ORDER BY last_heartbeat DESC"));
         // video-processing real-time ratio: measured execute seconds / output seconds
@@ -126,6 +137,13 @@ public class AdminController {
         long effective = Math.max(req.quotaBytes(), user.getUsedBytes() == null ? 0 : user.getUsedBytes());
         userMapper.updateQuota(id, effective);
         return Map.of("id", id, "storageQuotaBytes", effective);
+    }
+
+    /** admin can retry any failed task, e.g. failed CLEANUP jobs (spec section 5) */
+    @org.springframework.web.bind.annotation.PostMapping("/tasks/{id}/retry")
+    public Map<String, Object> retryTask(@PathVariable String id) {
+        SecurityUtils.requireAdmin();
+        return com.highlighthub.task.TaskController.view(taskService.retry(id, SecurityUtils.currentUserId(), true));
     }
 
     @GetMapping("/adapters")

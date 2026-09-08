@@ -56,7 +56,7 @@ public class TaskInternalController {
         )).toList();
     }
 
-    public record WorkerPingRequest(String workerId, String activeTaskId) {}
+    public record WorkerPingRequest(String workerId, String activeTaskId, Long diskFreeBytes, Long uptimeSeconds) {}
 
     /** worker-loop liveness ping (executors call this every claim cycle) */
     @org.springframework.web.bind.annotation.PostMapping("/ping")
@@ -64,7 +64,7 @@ public class TaskInternalController {
         if (req.workerId() == null || req.workerId().isBlank()) {
             throw BusinessException.badRequest("workerId required");
         }
-        taskService.pingWorker(req.workerId(), req.activeTaskId());
+        taskService.pingWorker(req.workerId(), req.activeTaskId(), req.diskFreeBytes(), req.uptimeSeconds());
         return Map.of("ok", true);
     }
 

@@ -50,8 +50,8 @@ public class TaskService {
         this.workerStatusMapper = workerStatusMapper;
     }
 
-    public void pingWorker(String workerId, String activeTaskId) {
-        workerStatusMapper.upsertHeartbeat(workerId, activeTaskId);
+    public void pingWorker(String workerId, String activeTaskId, Long diskFreeBytes, Long uptimeSeconds) {
+        workerStatusMapper.upsertHeartbeat(workerId, activeTaskId, diskFreeBytes, uptimeSeconds);
     }
 
     public TaskEntity create(String type, Long ownerId, String inputRef, String inputVersion, Object payload) {

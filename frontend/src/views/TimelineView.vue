@@ -49,12 +49,19 @@ async function runCandidates(runId: string) {
 }
 
 async function loadLatestAnalysisEvents() {
-  // the timeline shows events of the most recent succeeded analysis if any
+  // media loads in every path; the analysis param additionally restores
+  // events + the latest highlight run's candidates after a refresh
   const analysisId = route.query.analysis as string
-  if (analysisId) {
-    events.value = (await analysisApi.events(analysisId)).data
-  } else {
-    await load()
+  await load()
+  if (!analysisId) return
+  events.value = (await analysisApi.events(analysisId)).data
+  try {
+    const runs = (await highlightApi.runs(analysisId)).data
+    if (runs.length) {
+      candidates.value = (await highlightApi.candidates(runs[0].id)).data
+    }
+  } catch {
+    // candidates stay empty; the user can regenerate
   }
 }
 
