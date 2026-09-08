@@ -30,7 +30,8 @@ public class AnalysisController {
         this.idempotencyService = idempotencyService;
     }
 
-    public record CreateAnalysisRequest(@NotBlank String adapterVersionId, Map<String, Object> params) {}
+    public record CreateAnalysisRequest(@NotBlank String adapterVersionId, Map<String, Object> params,
+                                        String gameId) {}
 
     @PostMapping("/media/{id}/analyses")
     public Map<String, Object> create(@PathVariable String id,
@@ -40,10 +41,11 @@ public class AnalysisController {
         Map<String, Object> fingerprint = new LinkedHashMap<>();
         fingerprint.put("mediaId", id);
         fingerprint.put("adapterVersionId", req.adapterVersionId());
+        fingerprint.put("gameId", req.gameId());
         return (Map<String, Object>) idempotencyService.execute(userId, "ANALYSIS_CREATE", idemKey,
                 fingerprint, () -> analysisService.view(
                         analysisService.createAutoRun(userId, id, req.adapterVersionId(),
-                                req.params(), idemKey)));
+                                req.params(), idemKey, req.gameId())));
     }
 
     @GetMapping("/analyses/{id}")

@@ -81,6 +81,17 @@
   （根节点 v-if 恒假）；修复后刷新/直达均可恢复事件与候选状态。
 - 上传吞吐与放弃数（第二十一节）：管理统计按已完成会话实测
   字节/耗时，取消与过期会话计为放弃数。
+- 用户自建游戏档案（新增能力）：
+  - 类型普查见 docs/game-genres.md（21 类：MOBA/FPS/TPS/大逃杀/RTS/竞速/体育/格斗/
+    卡牌自走棋/MMO/沙盒生存/魂类/Roguelike/开放世界ARPG/模拟/音游/恐怖解谜/平台跳跃/
+    回合策略/派对休闲/其他），每类给出典型事件与 ROI 校准起点。
+  - V4 迁移 user_games 表；CRUD API `/api/games`（归属校验、未知类型 400、ROI 越界 400）。
+  - 分析创建可携带 gameId：档案默认 ROI 作为校准基（运行级 ROI 仍可覆盖），
+    params 记录 gameId+gameGenre 供溯源，复用键自然包含档案 ROI；
+    删除档案不影响已完成分析的溯源记录。
+  - 前端 /games 游戏档案页（类型下拉带预设说明、ROI 模板自动填充），
+    素材详情分析面板可选择档案。
+  - 诚实性：类型只影响校准起点，generic-ocr 仍为 EXPERIMENTAL，未验证不宣称支持。
 - 初始管理员账号通过 `HIGHLIGHT_HUB_ADMIN_INITIAL_PASSWORD` 环境变量注入
   （仅启动时无管理员才创建，密码不硬编码不入日志）。
 - 已修复：集成测试基类补充 `@ActiveProfiles("test")`——此前测试套件误指向开发库
@@ -103,12 +114,13 @@
   推送若因凭据失败将如实记录。
 
 ## 已执行测试（汇总见 docs/test-report.md）
-- backend `mvn test`：57/57 通过（真实 MySQL，独立测试库）
+- backend `mvn test`：60/60 通过（真实 MySQL，独立测试库）
 - media-worker `pytest`：15/15 通过（合成夹具 + 真实 FFmpeg/OCR）
 - `scripts/run_e2e.py`：31/31 通过（两轮）
 - `scripts/run_e2e_phase2.py`：13/13 通过（两轮）
 - `scripts/run_e2e_phase3.py`：9/9 通过（SSE + CROP/打码）
 - `scripts/run_e2e_admin.py`：10/10 通过（管理面 + 访问控制 + 状态自恢复，幂等可重复）
+- `scripts/run_e2e_games.py`：13/13 通过（类型目录/档案 CRUD/分析集成/溯源）
 - 浏览器 GUI 实测：多候选建工程（2 候选 → 2 片段编辑器）、SSE 任务中心、管理后台页面
 - 前端 GUI 冒烟：通过
 

@@ -14,6 +14,7 @@ const router = createRouter({
     { path: '/projects/:id', name: 'project-editor', component: () => import('../views/ProjectEditorView.vue') },
     { path: '/renders/:id', name: 'render-detail', component: () => import('../views/RenderDetailView.vue') },
     { path: '/tasks', name: 'tasks', component: () => import('../views/TasksView.vue') },
+    { path: '/games', name: 'games', component: () => import('../views/GamesView.vue') },
     { path: '/admin', name: 'admin', component: () => import('../views/AdminView.vue') }
   ]
 })

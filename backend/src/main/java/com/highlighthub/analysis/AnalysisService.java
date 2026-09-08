@@ -33,26 +33,44 @@ public class AnalysisService {
     private final MediaService mediaService;
     private final TaskService taskService;
     private final GenericAdapterSeeder adapterSeeder;
+    private final com.highlighthub.game.UserGameMapper gameMapper;
 
     public AnalysisService(AnalysisRunMapper runMapper, VideoEventMapper eventMapper,
                            MediaAssetMapper assetMapper, MediaService mediaService,
-                           TaskService taskService, GenericAdapterSeeder adapterSeeder) {
+                           TaskService taskService, GenericAdapterSeeder adapterSeeder,
+                           com.highlighthub.game.UserGameMapper gameMapper) {
         this.runMapper = runMapper;
         this.eventMapper = eventMapper;
         this.assetMapper = assetMapper;
         this.mediaService = mediaService;
         this.taskService = taskService;
         this.adapterSeeder = adapterSeeder;
+        this.gameMapper = gameMapper;
     }
 
-    /** user picks an adapter version (or manual mode); the run binds that exact version */
+    /**
+     * user picks an adapter version (or manual mode); the run binds that exact
+     * version. An optional user game profile pre-fills the ROI calibration
+     * (run-level rois still win) and is recorded for traceability.
+     */
     @Transactional
     public AnalysisRunEntity createAutoRun(Long ownerId, String mediaId, String adapterVersionId,
-                                           Map<String, Object> paramOverrides, String idempotencyKey) {
+                                           Map<String, Object> paramOverrides, String idempotencyKey,
+                                           String gameId) {
         MediaEntity media = mediaService.requireOwnedMedia(mediaId, ownerId);
         mediaService.assertStatusReady(media);
         AdapterVersionEntity version = adapterSeeder.requireUsableVersion(adapterVersionId);
         Map<String, Object> params = paramOverrides == null ? new LinkedHashMap<>() : paramOverrides;
+        if (gameId != null && !gameId.isBlank()) {
+            com.highlighthub.game.UserGameEntity game = gameMapper.findById(gameId);
+            if (game == null || !game.getUserId().equals(ownerId)) {
+                throw BusinessException.notFound("game profile not found");
+            }
+            params.put("gameId", game.getId());
+            params.put("gameGenre", game.getGenre());
+            params.putIfAbsent("rois", game.getDefaultRois() == null ? List.of()
+                    : Utils.fromJson(game.getDefaultRois(), List.class));
+        }
         Map<String, Object> merged = mergedConfig(version, params);
         String mergedJson = Utils.toJson(merged);
         String mergedHash = Utils.sha256Hex(mergedJson);
@@ -121,6 +139,14 @@ public class AnalysisService {
         view.put("taskId", run.getTaskId());
         view.put("createdAt", run.getCreatedAt().toString());
         if (run.getFinishedAt() != null) view.put("finishedAt", run.getFinishedAt().toString());
+        // traceability: which game profile (and genre) the run was calibrated against
+        if (run.getParamsJson() != null) {
+            Map<String, Object> params = Utils.fromJson(run.getParamsJson(), Map.class);
+            if (params != null) {
+                if (params.get("gameId") != null) view.put("gameId", params.get("gameId"));
+                if (params.get("gameGenre") != null) view.put("gameGenre", params.get("gameGenre"));
+            }
+        }
         return view;
     }
 

@@ -3,8 +3,8 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  mediaApi, adapterApi, analysisApi, taskApi, errText,
-  type Media, type AnalysisRun, type Task
+  mediaApi, adapterApi, analysisApi, taskApi, gameApi, errText,
+  type Media, type AnalysisRun, type Task, type GameProfile
 } from '../api'
 
 const route = useRoute()
@@ -21,6 +21,8 @@ const roisText = ref(JSON.stringify([
 const intervalMs = ref(500)
 const confirmFrames = ref(2)
 const busy = ref(false)
+const games = ref<GameProfile[]>([])
+const selectedGame = ref('')
 const analysis = ref<AnalysisRun | null>(null)
 const pollTimer = ref<ReturnType<typeof setTimeout>>()
 
@@ -40,6 +42,18 @@ async function loadAdapters() {
     const vs = await adapterApi.versions(generic.id)
     versions.value = vs.data
     if (vs.data.length) selectedVersion.value = vs.data[0].id
+  }
+  try {
+    games.value = (await gameApi.list()).data
+  } catch {
+    games.value = []
+  }
+}
+
+function onGameChange(gameId: string) {
+  const g = games.value.find((x) => x.id === gameId)
+  if (g && g.defaultRois && g.defaultRois.length) {
+    roisText.value = JSON.stringify(g.defaultRois, null, 2)
   }
 }
 
@@ -70,7 +84,7 @@ async function startAnalysis() {
       sampleIntervalMs: intervalMs.value,
       multiFrameConfirm: confirmFrames.value,
       rois
-    })
+    }, selectedGame.value || undefined)
     analysis.value = resp.data
     ElMessage.info('分析任务已提交，任务中心可查看进度')
     pollAnalysis()
@@ -178,6 +192,14 @@ onBeforeUnmount(() => pollTimer.value && clearTimeout(pollTimer.value))
               :label="`v${v.adapterVersion} · ${v.status}`"
             />
           </el-select>
+          <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px">
+            <span class="muted">游戏档案:</span>
+            <el-select v-model="selectedGame" clearable placeholder="未分类 / 手动" style="flex: 1"
+              @change="onGameChange">
+              <el-option v-for="g in games" :key="g.id" :value="g.id" :label="g.displayName" />
+            </el-select>
+            <el-button size="small" text type="primary" @click="$router.push('/games')">管理档案</el-button>
+          </div>
           <div style="display: flex; gap: 10px; margin: 12px 0">
             <el-input-number v-model="intervalMs" :min="200" :max="5000" :step="100" />
             <span class="muted" style="align-self: center">采样间隔 (ms)</span>

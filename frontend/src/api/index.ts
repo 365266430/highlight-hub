@@ -187,8 +187,9 @@ export const adapterApi = {
 }
 
 export const analysisApi = {
-  create: (mediaId: string, adapterVersionId: string, params: Record<string, unknown>) =>
-    http.post<AnalysisRun>(`/api/media/${mediaId}/analyses`, { adapterVersionId, params }),
+  create: (mediaId: string, adapterVersionId: string, params: Record<string, unknown>, gameId?: string) =>
+    http.post<AnalysisRun>(`/api/media/${mediaId}/analyses`,
+      gameId ? { adapterVersionId, params, gameId } : { adapterVersionId, params }),
   get: (id: string) => http.get<AnalysisRun>(`/api/analyses/${id}`),
   events: (id: string) => http.get<VideoEvent[]>(`/api/analyses/${id}/events`)
 }
@@ -211,6 +212,25 @@ export const highlightApi = {
     http.get<Candidate[]>(`/api/highlight-runs/${runId}/candidates`),
   decide: (candidateId: string, status: 'ACCEPTED' | 'REJECTED' | 'PENDING') =>
     http.patch<Candidate>(`/api/highlight-candidates/${candidateId}`, { status })
+}
+
+export interface GameProfile {
+  id: string
+  displayName: string
+  genre: string
+  defaultRois?: Record<string, unknown>[]
+  notes?: string
+}
+
+export const gameApi = {
+  genres: () => http.get<{ key: string; name: string; description: string;
+    typicalEvents: string[]; exampleGames: string[] }[]>('/api/games/genres'),
+  list: () => http.get<GameProfile[]>('/api/games'),
+  create: (body: { displayName: string; genre: string; defaultRois?: unknown; notes?: string }) =>
+    http.post<GameProfile>('/api/games', body),
+  update: (id: string, body: { displayName: string; genre: string; defaultRois?: unknown; notes?: string }) =>
+    http.put<GameProfile>(`/api/games/${id}`, body),
+  remove: (id: string) => http.delete(`/api/games/${id}`)
 }
 
 export const projectApi = {

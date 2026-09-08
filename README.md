@@ -102,15 +102,16 @@ Java 与 Worker 通过命名卷 `hub-data` 共享受控媒体目录（容器内�
 
 ## 测试与验证
 
-- 后端集成测试（真实 MySQL）：`cd backend && mvn test`（57 个用例）
+- 后端集成测试（真实 MySQL）：`cd backend && mvn test`（60 个用例）
 - Worker 单元/夹具测试：`cd media-worker && pytest`（15 个用例，合成夹具）
-- 端到端闭环：`scripts/run_e2e.py`（31 项）、`run_e2e_phase2.py`（13 项）、`run_e2e_phase3.py`（SSE+裁剪打码，9 项）、`run_e2e_admin.py`（管理面，9 项）
+- 端到端闭环：`scripts/run_e2e.py`（31 项）、`run_e2e_phase2.py`（13 项）、`run_e2e_phase3.py`（SSE+裁剪打码，9 项）、`run_e2e_admin.py`（管理面，10 项）、`run_e2e_games.py`（游戏档案，13 项）
 - 详见 [docs/test-report.md](docs/test-report.md)
 
 ## 文档索引
 
 - [docs/architecture.md](docs/architecture.md) — 架构与组件职责
 - [docs/adapter-development.md](docs/adapter-development.md) — 适配器/ROI 模板开发与诚实性约束
+- [docs/game-genres.md](docs/game-genres.md) — 游戏类型普查与识别策略映射
 - [docs/task-state-machine.md](docs/task-state-machine.md) — 任务状态机、租约、幂等与竞态处理
 - [docs/storage-and-cleanup.md](docs/storage-and-cleanup.md) — 存储、下载鉴权与清理
 - [docs/test-report.md](docs/test-report.md) — 实际执行的测试与结果

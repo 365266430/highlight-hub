@@ -13,7 +13,8 @@ const navs = computed(() => {
     { path: '/media', label: '素材库' },
     { path: '/upload', label: '上传' },
     { path: '/projects', label: '剪辑工程' },
-    { path: '/tasks', label: '任务中心' }
+    { path: '/tasks', label: '任务中心' },
+    { path: '/games', label: '游戏档案' }
   ]
   if (auth.user?.role === 'ADMIN') {
     base.push({ path: '/admin', label: '管理后台' })
