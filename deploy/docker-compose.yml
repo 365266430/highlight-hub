@@ -1,0 +1,71 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_DATABASE: ${DB_NAME:-highlight_hub}
+      MYSQL_USER: ${DB_USER:-highlight}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set in .env}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ../backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_NAME: ${DB_NAME:-highlight_hub}
+      DB_USER: ${DB_USER:-highlight}
+      DB_PASSWORD: ${DB_PASSWORD}
+      WORKER_TOKEN: ${WORKER_TOKEN:?set in .env}
+      STORAGE_ROOT: /data
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      UPLOAD_MAX_FILE_BYTES: ${UPLOAD_MAX_FILE_BYTES:-2147483648}
+      DEFAULT_USER_QUOTA_BYTES: ${DEFAULT_USER_QUOTA_BYTES:-2147483648}
+    volumes:
+      - hub-data:/data
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  media-worker:
+    build: ../media-worker
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      JAVA_BASE_URL: http://backend:8080
+      WORKER_TOKEN: ${WORKER_TOKEN}
+      STORAGE_ROOT: /data
+    volumes:
+      - hub-data:/data
+    ports:
+      - "${WORKER_HEALTH_PORT:-8123}:8123"
+
+  frontend:
+    build: ../frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+  # optional message broker profile for the outbox relay:
+  # docker compose --profile mq up
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    profiles: ["mq"]
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  mysql-data:
+  hub-data:

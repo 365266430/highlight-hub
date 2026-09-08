@@ -31,6 +31,7 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final TaskAttemptMapper attemptMapper;
     private final ApplicationEventPublisher events;
+    private final com.highlighthub.outbox.Outbox.Recorder outbox;
 
     @Value("${highlight-hub.task.default-lease-seconds}")
     private int defaultLeaseSeconds;
@@ -38,10 +39,12 @@ public class TaskService {
     @Value("${highlight-hub.task.max-attempts}")
     private int defaultMaxAttempts;
 
-    public TaskService(TaskMapper taskMapper, TaskAttemptMapper attemptMapper, ApplicationEventPublisher events) {
+    public TaskService(TaskMapper taskMapper, TaskAttemptMapper attemptMapper,
+                       ApplicationEventPublisher events, com.highlighthub.outbox.Outbox.Recorder outbox) {
         this.taskMapper = taskMapper;
         this.attemptMapper = attemptMapper;
         this.events = events;
+        this.outbox = outbox;
     }
 
     public TaskEntity create(String type, Long ownerId, String inputRef, String inputVersion, Object payload) {
@@ -164,6 +167,9 @@ public class TaskService {
         TaskEntity fresh = taskMapper.selectById(taskId);
         events.publishEvent(new TaskSucceededEvent(taskId, task.getType(), task.getOwnerId(),
                 task.getInputRef(), task.getInputVersion(), outputRef, result));
+        outbox.record("task.succeeded", taskId, task.getAttempt(),
+                java.util.Map.of("type", task.getType(), "inputRef", task.getInputRef(),
+                        "ownerId", task.getOwnerId() == null ? 0 : task.getOwnerId()));
         log.info("task {} type {} SUCCEEDED by token {}", fresh.getId(), task.getType(), abbreviate(attemptToken));
         return SUCCEEDED;
     }
@@ -194,6 +200,9 @@ public class TaskService {
         if (!willRetry) {
             events.publishEvent(new TaskFailedEvent(taskId, task.getType(), task.getOwnerId(),
                     task.getInputRef(), errorCode, errorMessage));
+            outbox.record("task.failed", taskId, task.getAttempt(),
+                    java.util.Map.of("type", task.getType(), "errorCode", errorCode,
+                            "ownerId", task.getOwnerId() == null ? 0 : task.getOwnerId()));
         }
         log.info("task {} attempt {} {} (code={})", taskId, task.getAttempt(),
                 willRetry ? "requeued" : "FAILED", errorCode);

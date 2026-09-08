@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .sessionFixation().migrateSession())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/csrf").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/shares/*/download").permitAll()
                 .requestMatchers("/internal/**").permitAll() // guarded by WorkerTokenFilter
                 .requestMatchers("/actuator/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                         "/v3/api-docs/**", "/error").permitAll()
