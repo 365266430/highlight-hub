@@ -1,0 +1,52 @@
+:root {
+  --hub-bg: #0f1115;
+  --hub-panel: #171a21;
+  --hub-border: #262b36;
+  --hub-accent: #7c5cff;
+  --hub-accent2: #29b3a2;
+  --hub-text: #e6e9f0;
+  --hub-muted: #8b93a7;
+}
+
+html, body, #app {
+  margin: 0;
+  height: 100%;
+  background: var(--hub-bg);
+  color: var(--hub-text);
+  font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+}
+
+.panel {
+  background: var(--hub-panel);
+  border: 1px solid var(--hub-border);
+  border-radius: 10px;
+  padding: 18px;
+}
+
+.muted { color: var(--hub-muted); font-size: 13px; }
+
+.el-button--primary {
+  --el-button-bg-color: var(--hub-accent);
+  --el-button-border-color: var(--hub-accent);
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 4px 0 16px;
+}
+
+.badge-experimental {
+  color: #e6b84c;
+  border: 1px solid #e6b84c;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 0 6px;
+  margin-left: 6px;
+}
