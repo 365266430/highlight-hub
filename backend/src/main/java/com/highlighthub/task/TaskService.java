@@ -32,6 +32,7 @@ public class TaskService {
     private final TaskAttemptMapper attemptMapper;
     private final ApplicationEventPublisher events;
     private final com.highlighthub.outbox.Outbox.Recorder outbox;
+    private final WorkerStatusMapper workerStatusMapper;
 
     @Value("${highlight-hub.task.default-lease-seconds}")
     private int defaultLeaseSeconds;
@@ -40,11 +41,17 @@ public class TaskService {
     private int defaultMaxAttempts;
 
     public TaskService(TaskMapper taskMapper, TaskAttemptMapper attemptMapper,
-                       ApplicationEventPublisher events, com.highlighthub.outbox.Outbox.Recorder outbox) {
+                       ApplicationEventPublisher events, com.highlighthub.outbox.Outbox.Recorder outbox,
+                       WorkerStatusMapper workerStatusMapper) {
         this.taskMapper = taskMapper;
         this.attemptMapper = attemptMapper;
         this.events = events;
         this.outbox = outbox;
+        this.workerStatusMapper = workerStatusMapper;
+    }
+
+    public void pingWorker(String workerId, String activeTaskId) {
+        workerStatusMapper.upsertHeartbeat(workerId, activeTaskId);
     }
 
     public TaskEntity create(String type, Long ownerId, String inputRef, String inputVersion, Object payload) {

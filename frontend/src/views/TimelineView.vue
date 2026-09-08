@@ -87,23 +87,44 @@ function seek(e: VideoEvent) {
 
 async function acceptCandidate(c: Candidate) {
   await highlightApi.decide(c.id, 'ACCEPTED')
+  c.status = 'ACCEPTED'
+  ElMessage.success('已保留，可继续挑选其余候选')
+}
+
+async function acceptOnly(c: Candidate) {
+  await highlightApi.decide(c.id, 'ACCEPTED')
+  await createProjectFromAccepted([c])
+}
+
+/** spec section-4 flow: several confirmed candidates become segments of ONE project */
+async function createProjectFromAccepted(list: Candidate[]) {
+  const ordered = [...list].sort((a, b) => a.startMs - b.startMs)
   const projectResp = await projectApi.create(mediaId, '我的高光工程')
   const p = projectResp.data
   const edl = {
     schemaVersion: 1,
     sourceMediaId: mediaId,
-    segments: [{
-      id: 's1',
+    segments: ordered.map((c, i) => ({
+      id: `s${i + 1}`,
       sourceInMs: c.startMs,
       sourceOutMs: c.endMs,
       caption: '',
       sourceVolume: 1.0
-    }],
+    })),
     output: { aspectMode: 'SOURCE', width: 1920, height: 1080, fps: 30 }
   }
   await projectApi.save(p.id, { expectedRevision: 0, name: p.name, ...edl })
-  ElMessage.success('已从候选创建剪辑工程')
+  ElMessage.success(`已创建包含 ${ordered.length} 个片段的剪辑工程`)
   router.push(`/projects/${p.id}`)
+}
+
+async function buildFromAccepted() {
+  const accepted = candidates.value.filter((c) => c.status === 'ACCEPTED')
+  if (!accepted.length) {
+    ElMessage.warning('请先保留至少一个候选')
+    return
+  }
+  await createProjectFromAccepted(accepted)
 }
 
 async function rejectCandidate(c: Candidate) {
@@ -199,6 +220,11 @@ onMounted(loadLatestAnalysisEvents)
             :loading="busy"
             @click="runs.length ? null : null; runCandidates((events[0] && events[0].analysisRunId) || ($route.query.analysis as string))"
           >生成候选（默认规则）</el-button>
+          <el-button
+            v-if="candidates.some((c) => c.status === 'ACCEPTED')"
+            type="success"
+            @click="buildFromAccepted"
+          >用全部已保留候选建工程（多片段）</el-button>
           <el-empty v-if="!candidates.length" description="尚无候选" :image-size="60" />
           <div v-for="c in candidates" :key="c.id" class="candidate">
             <div>
@@ -206,7 +232,8 @@ onMounted(loadLatestAnalysisEvents)
               <div class="muted">{{ c.reasonText }}</div>
             </div>
             <div style="margin-top: 8px; display: flex; gap: 8px">
-              <el-button size="small" type="primary" @click="acceptCandidate(c)">保留并建工程</el-button>
+              <el-button size="small" type="primary" @click="acceptOnly(c)">保留并单独建工程</el-button>
+              <el-button size="small" @click="acceptCandidate(c)">保留</el-button>
               <el-button size="small" @click="rejectCandidate(c)">排除</el-button>
             </div>
           </div>

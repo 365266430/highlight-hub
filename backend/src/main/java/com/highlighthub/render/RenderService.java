@@ -148,6 +148,10 @@ public class RenderService {
         job.setOutputAssetId(asset.getId());
         job.setOutputSize(size);
         job.setOutputChecksum(checksum);
+        // measured output duration feeds the real-time-ratio observability metric
+        if (result.get("durationMs") instanceof Number d) {
+            job.setOutputDurationMs(d.longValue());
+        }
         job.setFinishedAt(Utils.utcNow());
         renderJobMapper.updateById(job);
         log.info("render job {} SUCCEEDED ({} bytes)", job.getId(), size);

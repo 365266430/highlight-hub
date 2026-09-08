@@ -56,6 +56,18 @@ public class TaskInternalController {
         )).toList();
     }
 
+    public record WorkerPingRequest(String workerId, String activeTaskId) {}
+
+    /** worker-loop liveness ping (executors call this every claim cycle) */
+    @org.springframework.web.bind.annotation.PostMapping("/ping")
+    public Map<String, Object> ping(@RequestBody WorkerPingRequest req) {
+        if (req.workerId() == null || req.workerId().isBlank()) {
+            throw BusinessException.badRequest("workerId required");
+        }
+        taskService.pingWorker(req.workerId(), req.activeTaskId());
+        return Map.of("ok", true);
+    }
+
     @PostMapping("/{id}/heartbeat")
     public Map<String, Object> heartbeat(@PathVariable String id, @RequestBody HeartbeatRequest req) {
         if (req.attemptToken() == null) throw BusinessException.badRequest("attemptToken required");

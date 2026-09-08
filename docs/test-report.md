@@ -10,7 +10,7 @@
 
 ## 1. 后端集成测试（`backend mvn test`，真实 MySQL 测试库）
 
-**55 个用例全部通过，0 失败 0 错误。**
+**56 个用例全部通过，0 失败 0 错误。**
 
 | 套件 | 数量 | 覆盖 |
 | --- | --- | --- |
@@ -21,6 +21,7 @@
 | AnalysisHighlightIntegrationTest | 3 | ANALYZE 结果落库（AUTO 事件、不虚构 actor）、候选生成 108000–142000ms 精确断言、候选接受、规则参数变更产生新 run 不覆盖旧候选、不支持输入 fail→run FAILED、跨用户分析 404 |
 | HighlightRuleEngineTest | 8 | 纯引擎：证据 reason、窗口计数、边界裁剪、合并上限 30s、同输入同输出、类型过滤、actor 约束 |
 | AdminIntegrationTest | 4 | 普通用户访问管理面 403、实测统计字段、配额调整（低于已用自动钳制/负值 400）、适配器生命周期（VERIFIED 无凭据 400、凭据通过、非法迁移 409） |
+| AdminIntegrationTest（补充） | 1 | Worker 心跳 ping（内部鉴权接口）→ 管理统计显示在线；渲染实时率实测（5s 执行 / 4s 成片 = 1.25） |
 | AnalysisReuseIntegrationTest | 1 | §14 复用键：同 media+适配器版本+配置哈希+算法版本 → 复用已完成的 run（不重复排队）；配置不同 → 新 run |
 | EdlValidatorTest | 7 | CROP/SOURCE 模式、未知模式拒绝、打码区域越界/负值拒绝、JSON 往返保留 masks |
 | ShareIntegrationTest | 1 | 令牌创建/匿名下载 200/撤销后 410/假令牌 404 |
@@ -49,7 +50,7 @@ Worker 生成预览+缩略图 → 预览 Range 206 → 跨用户 404 → 手动�
 适配器注册表显示 EXPERIMENTAL 且 **verified=false**（不虚构 VERIFIED）→
 候选规则引擎（理由可追溯、边界 0–8s 内）→ 候选接受。
 
-### 管理面 `run_e2e_admin.py`：9/9 通过
+### 管理面 `run_e2e_admin.py`：10/10 通过（含 DISABLED→EXPERIMENTAL 自恢复，可重复执行）
 环境变量注入初始管理员（不硬编码、不入日志）→ 普通用户 403 → 实测统计 → 配额调整并立即对用户生效 → VERIFIED 无真实游戏评测凭据被拒绝 → DISABLED 生效。
 
 ### 阶段3 `run_e2e_phase3.py`：9/9 通过

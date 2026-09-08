@@ -86,6 +86,49 @@ class AdminIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void workerLivenessAndRenderRealtimeRatioMeasured() {
+        seedAdmin();
+        // worker pings through the internal API (service-auth guarded)
+        org.springframework.http.HttpHeaders wh = new org.springframework.http.HttpHeaders();
+        wh.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        wh.add("X-Worker-Token", "dev-worker-token-change-me");
+        var ping = rest.exchange("/internal/tasks/ping", org.springframework.http.HttpMethod.POST,
+                new org.springframework.http.HttpEntity<>(Map.of("workerId", "worker-live"), wh), String.class);
+        assertThat(ping.getStatusCode().value()).isEqualTo(200);
+
+        // a finished render with measured output duration feeds the realtime ratio
+        jdbc.update("""
+                INSERT INTO render_jobs (id, project_id, project_revision, owner_id, media_id, preset_version,
+                  renderer_version, status, task_id, output_size, output_duration_ms, created_at)
+                VALUES ('r-rt', 'p-rt', 1, 1, 'm-rt', 'mp4-h264-aac-v1', 'renderer-2026.09-v2', 'SUCCEEDED',
+                  't-rt', 10240, 4000, UTC_TIMESTAMP(3))
+                """);
+        jdbc.update("""
+                INSERT INTO tasks (id, owner_id, type, input_ref, status, attempt, max_attempts, progress,
+                  next_run_at, created_at, started_at, finished_at, updated_at)
+                VALUES ('t-rt', 1, 'RENDER', 'r-rt', 'SUCCEEDED', 1, 3, 100, UTC_TIMESTAMP(3),
+                  UTC_TIMESTAMP(3), UTC_TIMESTAMP(3) - INTERVAL 10 SECOND,
+                  UTC_TIMESTAMP(3) - INTERVAL 5 SECOND, UTC_TIMESTAMP(3))
+                """);
+
+        Client c = client();
+        c.registerAndLogin("plainuser5", "password123");
+        c.post("/api/auth/login", Map.of("username", "admin", "password", "password123"));
+        Map<String, Object> stats = json(c.get("/api/admin/stats"));
+
+        List<Map<String, Object>> workers = (List<Map<String, Object>>) stats.get("workers");
+        assertThat(workers).extracting(w -> w.get("worker_id")).contains("worker-live");
+        Map<String, Object> live = workers.stream()
+                .filter(w -> "worker-live".equals(w.get("worker_id"))).findFirst().orElseThrow();
+        assertThat(((Number) live.get("online")).intValue()).isEqualTo(1);
+
+        List<Map<String, Object>> ratios = (List<Map<String, Object>>) stats.get("renderRealtimeRatio");
+        assertThat(ratios).hasSize(1);
+        // 5 execution seconds / 4 output seconds = 1.25
+        assertThat(((Number) ratios.get(0).get("ratio")).doubleValue()).isEqualTo(1.25);
+    }
+
+    @Test
     void adapterStatusLifecycleGatesVerifiedBehindAttestation() {
         seedAdmin();
         seedAdapterVersion();

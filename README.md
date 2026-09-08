@@ -102,7 +102,7 @@ Java 与 Worker 通过命名卷 `hub-data` 共享受控媒体目录（容器内�
 
 ## 测试与验证
 
-- 后端集成测试（真实 MySQL）：`cd backend && mvn test`（55 个用例）
+- 后端集成测试（真实 MySQL）：`cd backend && mvn test`（56 个用例）
 - Worker 单元/夹具测试：`cd media-worker && pytest`（15 个用例，合成夹具）
 - 端到端闭环：`scripts/run_e2e.py`（31 项）、`run_e2e_phase2.py`（13 项）、`run_e2e_phase3.py`（SSE+裁剪打码，9 项）、`run_e2e_admin.py`（管理面，9 项）
 - 详见 [docs/test-report.md](docs/test-report.md)

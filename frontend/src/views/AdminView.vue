@@ -102,6 +102,17 @@ onMounted(load)
           <h5>其他</h5>
           <div class="muted">发生重试的任务: {{ stats.retriedTasks }}</div>
           <div class="muted">渲染成功率: {{ stats.renderSuccessRate ?? '暂无终态渲染' }}</div>
+          <div class="muted">渲染实时率（执行秒/成片秒，<1 快于播放）:</div>
+          <div v-for="row in stats.renderRealtimeRatio || []" :key="row.id" class="muted" style="margin-left: 8px">
+            {{ row.id.slice(0, 8) }}…: {{ row.ratio }}
+          </div>
+          <div class="muted">在线 Worker:
+            <el-tag
+              v-for="w in stats.workers || []" :key="w.worker_id" size="small"
+              :type="w.online ? 'success' : 'info'" style="margin: 0 4px 4px 0"
+            >{{ w.worker_id }}{{ w.online ? ' ●' : ' ○' }}</el-tag>
+            <span v-if="!(stats.workers || []).length">无记录</span>
+          </div>
           <div class="muted">候选决策:
             <el-tag v-for="row in stats.candidatesByStatus || []" :key="row.status"
               size="small" style="margin: 0 4px 4px 0">{{ row.status }}: {{ row.n }}</el-tag>

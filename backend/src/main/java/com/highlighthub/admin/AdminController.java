@@ -82,6 +82,18 @@ public class AdminController {
                 "SELECT COUNT(*) n, COALESCE(SUM(used_bytes),0) used_bytes FROM users"));
         out.put("mediaByStatus", jdbc.queryForList(
                 "SELECT status, COUNT(*) n FROM media GROUP BY status"));
+        // worker liveness (pinged within the last 60 seconds = online)
+        out.put("workers", jdbc.queryForList(
+                "SELECT worker_id, active_task_id, " +
+                "(last_heartbeat >= UTC_TIMESTAMP(3) - INTERVAL 60 SECOND) online, last_heartbeat " +
+                "FROM worker_status ORDER BY last_heartbeat DESC"));
+        // video-processing real-time ratio: measured execute seconds / output seconds
+        // (values < 1 mean rendering is faster than playback; measured, never estimated)
+        out.put("renderRealtimeRatio", jdbc.queryForList(
+                "SELECT r.id, ROUND(TIMESTAMPDIFF(SECOND, t.started_at, t.finished_at) / " +
+                "(r.output_duration_ms / 1000.0), 3) ratio FROM render_jobs r " +
+                "JOIN tasks t ON t.id = r.task_id WHERE r.status = 'SUCCEEDED' " +
+                "AND r.output_duration_ms > 0 AND t.finished_at IS NOT NULL ORDER BY r.finished_at DESC LIMIT 20"));
         return out;
     }
 

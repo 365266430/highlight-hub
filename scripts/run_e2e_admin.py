@@ -78,6 +78,12 @@ def main() -> int:
     check("admin: adapter registry reflects DISABLED",
           adapters[0]["versions"][0]["status"] in ("DISABLED", "VERIFIED"), str(adapters)[:200])
 
+    # cleanup: restore the generic adapter so other suites keep working
+    version = generic["versions"][0]
+    r = admin.put(f"{BASE}/api/admin/adapters/versions/{version['id']}/status",
+                  json={"status": "EXPERIMENTAL"}, timeout=10)
+    check("admin: DISABLED -> EXPERIMENTAL recovery transition", r.status_code == 200, r.text[:150])
+
     passed = sum(1 for _, ok, _ in CHECKS if ok)
     failed = len(CHECKS) - passed
     print(f"\n==== ADMIN E2E RESULT: {passed} passed, {failed} failed ====")

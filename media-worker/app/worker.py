@@ -23,6 +23,7 @@ class Worker:
                  self.client.worker_id, self.client.base_url, executors.config.STORAGE_ROOT,
                  executors.config.CLAIM_TYPES)
         while not self._stop.is_set():
+            self.client.ping(None)  # liveness for the admin dashboard
             try:
                 claimed = self.client.claim(executors.config.CLAIM_TYPES, max_count=1)
             except PermissionError as e:

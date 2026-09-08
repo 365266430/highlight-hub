@@ -20,6 +20,7 @@ public class RenderJobEntity {
     private String taskId;
     private String outputAssetId;
     private Long outputSize;
+    private Long outputDurationMs;
     private String outputChecksum;
     private String errorCode;
     private String errorMessage;
@@ -48,6 +49,8 @@ public class RenderJobEntity {
     public void setOutputAssetId(String outputAssetId) { this.outputAssetId = outputAssetId; }
     public Long getOutputSize() { return outputSize; }
     public void setOutputSize(Long outputSize) { this.outputSize = outputSize; }
+    public Long getOutputDurationMs() { return outputDurationMs; }
+    public void setOutputDurationMs(Long outputDurationMs) { this.outputDurationMs = outputDurationMs; }
     public String getOutputChecksum() { return outputChecksum; }
     public void setOutputChecksum(String outputChecksum) { this.outputChecksum = outputChecksum; }
     public String getErrorCode() { return errorCode; }

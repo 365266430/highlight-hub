@@ -65,6 +65,15 @@ class JavaClient:
         }, timeout=15)
         return r.status_code == 200
 
+    def ping(self, active_task_id: str | None = None) -> None:
+        """Worker-loop liveness ping (best effort; used for admin observability)."""
+        try:
+            self.session.post(f"{self.base_url}/internal/tasks/ping",
+                              json={"workerId": self.worker_id, "activeTaskId": active_task_id},
+                              timeout=5)
+        except requests.RequestException:
+            pass
+
     def cancellation(self, task_id: str, attempt_token: str) -> bool:
         """True = stop the task. False = keep going. Stale token also aborts:
         the attempt no longer owns the task, so continuing would be wasted work."""
