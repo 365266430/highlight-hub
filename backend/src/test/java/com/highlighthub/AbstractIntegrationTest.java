@@ -26,6 +26,7 @@ import java.util.Map;
  * Each test starts from a truncated schema.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@org.springframework.test.context.ActiveProfiles("test")
 public abstract class AbstractIntegrationTest {
 
     @Autowired
