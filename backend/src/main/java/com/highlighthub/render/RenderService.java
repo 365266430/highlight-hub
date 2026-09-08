@@ -22,7 +22,7 @@ import java.util.Map;
 @Service
 public class RenderService {
     private static final Logger log = LoggerFactory.getLogger(RenderService.class);
-    public static final String RENDERER_VERSION = "renderer-2026.09-v1";
+    public static final String RENDERER_VERSION = "renderer-2026.09-v2";
     public static final String PRESET_VERSION = "mp4-h264-aac-v1";
 
     private final RenderJobMapper renderJobMapper;

@@ -116,7 +116,7 @@ public class ProjectService {
     }
 
     private EdlValidator.Edl emptyEdl(String mediaId) {
-        return new EdlValidator.Edl(1, mediaId, List.of(), new EdlValidator.Output("SOURCE", 1920, 1080, 30));
+        return new EdlValidator.Edl(1, mediaId, List.of(), new EdlValidator.Output("SOURCE", 1920, 1080, 30), List.of());
     }
 
     public ProjectRevisionEntity requireRevision(String projectId, int revision) {

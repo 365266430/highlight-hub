@@ -42,6 +42,11 @@
 
 ### 阶段 3（部分）
 - 分享链接：高熵令牌（库存哈希）、过期、撤销、公开下载仅成片。
+- SSE 任务事件推送：`GET /api/tasks/stream`（会话鉴权、仅推给所有者、心跳保活），
+  终态与实时进度事件；前端任务中心以 SSE 为主、REST 轮询兜底（重连即回 REST 权威）。
+- 竖屏/方形导出基础：EDL output.aspectMode=CROP（中心裁剪铺满）+ 源画面相对坐标
+  固定打码（≤8 块，渲染在裁剪之前、始终跟踪原始画面）；渲染器版本 v2。
+  E2E 实测：400×400 铺满输出 + 打码区域纯黑。
 - Outbox：任务终态同事务插入 outbox_events + 进程内 Publisher（幂等消费表就绪）。
 - 存储清理：上传会话 TTL 清扫、媒体软删 + CLEANUP 任务 + 配额释放、Worker 临时目录清理。
 
@@ -60,11 +65,10 @@
 - git 提交 5 个里程碑（详见 git log）。
 
 ## 当前任务
-- 最终多轮自动化验证与 git 推送。
+- 已完成最终多轮回归（50 后端 + 15 Worker + 31/13/9 三套 E2E）并推送远端。
+- 后续：有 Docker 的环境实测 Compose；真实游戏样本到位后适配第一款游戏。
 
 ## 尚未实现（诚实清单）
-- SSE 推送（当前 REST 轮询，正确性优先；事件推送为第二阶段增强）。
-- 竖屏固定裁剪、补边、固定区域打码（第二阶段能力，EDL 输出为 SOURCE 模式）。
 - 事件修订的离线评估管道（用户修正已留痕，未接评估任务）。
 - 全局分析/渲染并发的精细化配置面板（配置项已存在）。
 - 多源素材工程、多视角对齐、规则比较（阶段4，未开始）。
@@ -79,10 +83,11 @@
   推送若因凭据失败将如实记录。
 
 ## 已执行测试（汇总见 docs/test-report.md）
-- backend `mvn test`：43/43 通过（真实 MySQL）
-- media-worker `pytest`：12/12 通过（合成夹具 + 真实 FFmpeg/OCR）
-- `scripts/run_e2e.py`：31/31 通过
-- `scripts/run_e2e_phase2.py`：13/13 通过
+- backend `mvn test`：50/50 通过（真实 MySQL）
+- media-worker `pytest`：15/15 通过（合成夹具 + 真实 FFmpeg/OCR）
+- `scripts/run_e2e.py`：31/31 通过（两轮）
+- `scripts/run_e2e_phase2.py`：13/13 通过（两轮）
+- `scripts/run_e2e_phase3.py`：9/9 通过（SSE + CROP/打码）
 - 前端 GUI 冒烟：通过
 
 ## 下一条具体操作

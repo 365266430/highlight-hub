@@ -38,7 +38,8 @@ public class ProjectController {
     public record SegmentDto(String id, Long sourceInMs, Long sourceOutMs, String caption, Double sourceVolume) {}
     public record OutputDto(String aspectMode, Integer width, Integer height, Integer fps) {}
     public record SaveProjectRequest(Integer expectedRevision, String name, Integer schemaVersion,
-                                     String sourceMediaId, List<SegmentDto> segments, OutputDto output) {}
+                                     String sourceMediaId, List<SegmentDto> segments, OutputDto output,
+                                     List<EdlValidator.Mask> masks) {}
 
     @PostMapping
     public Map<String, Object> create(@RequestBody @Valid CreateProjectRequest req) {
@@ -84,7 +85,7 @@ public class ProjectController {
                         req.output().width() == null ? 1920 : req.output().width(),
                         req.output().height() == null ? 1080 : req.output().height(),
                         req.output().fps() == null ? 30 : req.output().fps());
-        return new EdlValidator.Edl(1, sourceMediaId, segments, output);
+        return new EdlValidator.Edl(1, sourceMediaId, segments, output, req.masks());
     }
 
     @GetMapping("/{id}/revisions")

@@ -143,13 +143,14 @@ def _q(path: str) -> str:
 
 
 def render_args(src: str, dst: str, edl: dict, caption_files: list[tuple[str, float, float]],
-                font_file: str | None) -> list[str]:
+                font_file: str | None, source_width: int = 0, source_height: int = 0) -> list[str]:
     """Build the frame-accurate render command (decode + filter + re-encode).
 
-    Caption text files and the font file are referenced by RELATIVE names -
-    the caller runs ffmpeg with cwd=tempdir, which keeps Windows drive letters
-    and backslashes out of the filtergraph entirely. Caption text never enters
-    the command line; it lives in files written by the executor.
+    Mask regions are relative to the SOURCE frame (0..1, validated by Java)
+    and applied BEFORE any trim/crop/pad, so they track the original picture.
+    aspectMode: SOURCE = fit inside output box + black pad; CROP = center
+    crop to fill the output box. Captions use relative textfile/font names
+    (ffmpeg runs with cwd=tempdir).
     """
     segments = edl["segments"]
     out = edl["output"]
@@ -161,10 +162,26 @@ def render_args(src: str, dst: str, edl: dict, caption_files: list[tuple[str, fl
     fps = int(out.get("fps", 30))
 
     parts: list[str] = []
+    # static source-frame masks (drawbox fill black) applied once, upstream of trims
+    masks = edl.get("masks") or []
+    base_v = "[0:v]"
+    if masks:
+        sw = source_width or 1920
+        sh = source_height or 1080
+        label_in = "[0:v]"
+        for mi, m in enumerate(masks):
+            x = int(round(m["x"] * sw))
+            y = int(round(m["y"] * sh))
+            w = int(round(m["w"] * sw))
+            h = int(round(m["h"] * sh))
+            next_label = f"[vm{mi}]"
+            parts.append(f"{label_in}drawbox=x={x}:y={y}:w={w}:h={h}:color=black:t=fill{next_label}")
+            label_in = next_label
+        base_v = label_in
     for i, seg in enumerate(segments):
         s = seg["sourceInMs"] / 1000.0
         e = seg["sourceOutMs"] / 1000.0
-        parts.append(f"[0:v]trim=start={s:.3f}:end={e:.3f},setpts=PTS-STARTPTS[v{i}]")
+        parts.append(f"{base_v}trim=start={s:.3f}:end={e:.3f},setpts=PTS-STARTPTS[v{i}]")
         if has_audio:
             vol = max(0.0, min(1.5, float(seg.get("sourceVolume", 1.0))))
             parts.append(
@@ -180,10 +197,17 @@ def render_args(src: str, dst: str, edl: dict, caption_files: list[tuple[str, fl
     concat_out = "[cv][ca]" if has_audio else "[cv]"
     parts.append(f"{concat_in}concat=n={n}:v=1:a={1 if has_audio else 0}{concat_out}")
 
-    parts.append(
-        f"[cv]scale={width}:{height}:force_original_aspect_ratio=decrease,"
-        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2[vfit]"
-    )
+    if out.get("aspectMode", "SOURCE") == "CROP":
+        # center-crop the source to fill the output box (no letterboxing)
+        parts.append(
+            f"[cv]scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height}[vfit]"
+        )
+    else:
+        parts.append(
+            f"[cv]scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2[vfit]"
+        )
 
     final_v = "[vfit]"
     offset = 0.0

@@ -18,6 +18,8 @@ const expectedRevision = ref(0)
 const name = ref('')
 const busy = ref(false)
 const render = ref<RenderJob | null>(null)
+const aspectMode = ref<'SOURCE' | 'CROP'>('SOURCE')
+const masksText = ref('[]')
 
 const totalDuration = computed(() =>
   segments.value.reduce((acc, s) => acc + (s.sourceOutMs - s.sourceInMs), 0))
@@ -30,6 +32,8 @@ async function load() {
   media.value = (await mediaApi.get(p.data.mediaId)).data
   if (p.data.edl) {
     segments.value = [...p.data.edl.segments]
+    aspectMode.value = p.data.edl.output.aspectMode === 'CROP' ? 'CROP' : 'SOURCE'
+    masksText.value = JSON.stringify(p.data.edl.masks || [], null, 2)
   }
 }
 
@@ -62,11 +66,19 @@ function move(i: number, dir: -1 | 1) {
 async function save() {
   busy.value = true
   try {
+    let masks: unknown
+    try {
+      masks = JSON.parse(masksText.value)
+    } catch {
+      ElMessage.error('打码区域不是合法 JSON')
+      return
+    }
     const edl: Edl = {
       schemaVersion: 1,
       sourceMediaId: project.value!.mediaId,
       segments: segments.value,
-      output: { aspectMode: 'SOURCE', width: 1920, height: 1080, fps: 30 }
+      output: { aspectMode: aspectMode.value, width: 1920, height: 1080, fps: 30 },
+      masks: masks as any
     }
     const resp = await projectApi.save(projectId, {
       expectedRevision: expectedRevision.value,
@@ -164,6 +176,23 @@ onMounted(load)
           <el-form label-position="top">
             <el-form-item label="工程名">
               <el-input v-model="name" />
+            </el-form-item>
+          </el-form>
+          <el-form label-position="top">
+            <el-form-item label="画面模式">
+              <el-radio-group v-model="aspectMode">
+                <el-radio-button value="SOURCE">源比例（补边）</el-radio-button>
+                <el-radio-button value="CROP">裁剪铺满</el-radio-button>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="固定打码（源画面相对坐标 0~1，最多 8 块）">
+              <el-input
+                v-model="masksText"
+                type="textarea"
+                :rows="3"
+                style="font-family: monospace"
+                placeholder='[{"x":0.55,"y":0.02,"w":0.4,"h":0.2}]'
+              />
             </el-form-item>
           </el-form>
           <div style="display: flex; gap: 10px; margin-top: 8px">

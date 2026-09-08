@@ -72,11 +72,20 @@ export interface Segment {
   sourceVolume: number
 }
 
+export interface MaskRegion {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface Edl {
   schemaVersion: number
   sourceMediaId: string
   segments: Segment[]
   output: { aspectMode: string; width: number; height: number; fps: number }
+  /** static black boxes over the SOURCE picture (relative 0..1) */
+  masks?: MaskRegion[]
 }
 
 export interface RenderJob {

@@ -18,9 +18,11 @@ import java.util.Map;
 @RequestMapping("/api/tasks")
 public class TaskController {
     private final TaskService taskService;
+    private final com.highlighthub.task.TaskStreamService taskStreamService;
 
-    public TaskController(TaskService taskService) {
+    public TaskController(TaskService taskService, com.highlighthub.task.TaskStreamService taskStreamService) {
         this.taskService = taskService;
+        this.taskStreamService = taskStreamService;
     }
 
     public static Map<String, Object> view(TaskEntity t) {
@@ -55,6 +57,12 @@ public class TaskController {
     @GetMapping("/{id}")
     public Map<String, Object> get(@PathVariable String id) {
         return view(taskService.requireOwnedTask(id, SecurityUtils.currentUserId()));
+    }
+
+    /** SSE stream of the user's own task events; REST list remains the reconnect source of truth */
+    @org.springframework.web.bind.annotation.GetMapping("/stream")
+    public org.springframework.web.servlet.mvc.method.annotation.SseEmitter stream() {
+        return taskStreamService.register(SecurityUtils.currentUserId());
     }
 
     @PostMapping("/{id}/cancel")

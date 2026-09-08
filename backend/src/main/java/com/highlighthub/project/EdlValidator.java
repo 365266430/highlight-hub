@@ -15,7 +15,16 @@ public final class EdlValidator {
 
     public record Segment(String id, long sourceInMs, long sourceOutMs, String caption, double sourceVolume) {}
     public record Output(String aspectMode, int width, int height, int fps) {}
-    public record Edl(int schemaVersion, String sourceMediaId, List<Segment> segments, Output output) {}
+
+    /**
+     * Static mask region in SOURCE frame coordinates (relative 0..1).
+     * Cropping/padding happens AFTER masking, so masks always track the
+     * original picture - documented in docs/architecture.md.
+     */
+    public record Mask(double x, double y, double w, double h) {}
+
+    public record Edl(int schemaVersion, String sourceMediaId, List<Segment> segments,
+                      Output output, List<Mask> masks) {}
 
     private EdlValidator() {}
 
@@ -64,8 +73,8 @@ public final class EdlValidator {
         }
         Output out = edl.output();
         if (out == null) throw BusinessException.badRequest("output settings are required");
-        if (!"SOURCE".equals(out.aspectMode())) {
-            throw BusinessException.badRequest("aspectMode must be SOURCE in this version");
+        if (!"SOURCE".equals(out.aspectMode()) && !"CROP".equals(out.aspectMode())) {
+            throw BusinessException.badRequest("aspectMode must be SOURCE (fit+pad) or CROP (center crop)");
         }
         if (out.width() <= 0 || out.width() > 3840 || (out.width() % 2) != 0) {
             throw BusinessException.badRequest("output width must be an even number in (0, 3840]");
@@ -75,6 +84,18 @@ public final class EdlValidator {
         }
         if (!Set.of(24, 25, 30, 50, 60).contains(out.fps())) {
             throw BusinessException.badRequest("output fps must be one of 24/25/30/50/60");
+        }
+        List<Mask> masks = edl.masks();
+        if (masks != null) {
+            if (masks.size() > 8) throw BusinessException.badRequest("too many masks (max 8)");
+            for (int i = 0; i < masks.size(); i++) {
+                Mask m = masks.get(i);
+                if (m.x() < 0 || m.y() < 0 || m.w() <= 0 || m.h() <= 0
+                        || m.x() + m.w() > 1.0 || m.y() + m.h() > 1.0) {
+                    throw BusinessException.badRequest(
+                            "mask " + i + ": region must be inside the source frame (0..1 relative coords)");
+                }
+            }
         }
     }
 

@@ -121,6 +121,10 @@ public class TaskService {
             requireCurrentAttempt(taskId, attemptToken);
             throw BusinessException.conflict(ErrorCodes.TASK_CONFLICT, "progress rejected");
         }
+        TaskEntity task = taskMapper.selectById(taskId);
+        if (task != null && task.getOwnerId() != null) {
+            events.publishEvent(new TaskProgressEvent(taskId, task.getOwnerId(), task.getType(), p, phase));
+        }
     }
 
     public boolean isCancelRequested(String taskId, String attemptToken) {
@@ -321,6 +325,7 @@ public class TaskService {
     }
 
     // ---- Spring events consumed by media/render/analysis modules ----
+    public record TaskProgressEvent(String taskId, Long ownerId, String type, int progress, String phase) {}
     public record TaskSucceededEvent(String taskId, String type, Long ownerId, String inputRef,
                                      String inputVersion, String outputRef, Object result) {}
     public record TaskFailedEvent(String taskId, String type, Long ownerId, String inputRef,

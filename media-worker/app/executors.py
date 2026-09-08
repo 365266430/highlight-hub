@@ -189,7 +189,8 @@ def _render(task_id: str, payload: dict, progress, cancel_requested) -> dict:
 
     total_ms = sum(seg["sourceOutMs"] - seg["sourceInMs"] for seg in edl["segments"])
     tmp_out = os.path.join(tmp_dir, "output.mp4")
-    args = ffm.render_args(src, tmp_out, edl, caption_files, config.FONT_FILE)
+    args = ffm.render_args(src, tmp_out, edl, caption_files, config.FONT_FILE,
+                           source_width=info["width"], source_height=info["height"])
     progress(5, "rendering")
     ffm.run_with_progress(
         args, total_ms,

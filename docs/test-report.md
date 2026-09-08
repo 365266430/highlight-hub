@@ -10,7 +10,7 @@
 
 ## 1. 后端集成测试（`backend mvn test`，真实 MySQL 测试库）
 
-**43 个用例全部通过，0 失败 0 错误。**
+**50 个用例全部通过，0 失败 0 错误。**
 
 | 套件 | 数量 | 覆盖 |
 | --- | --- | --- |
@@ -20,11 +20,12 @@
 | ProjectRenderIntegrationTest | 7 | 版本链不可变+expectedRevision 409、非法时间范围/音量 400、跨用户工程 404、渲染绑定不可变版本、Idempotency-Key 回放同一渲染、物理路径不泄露、跨用户下载 404/409 |
 | AnalysisHighlightIntegrationTest | 3 | ANALYZE 结果落库（AUTO 事件、不虚构 actor）、候选生成 108000–142000ms 精确断言、候选接受、规则参数变更产生新 run 不覆盖旧候选、不支持输入 fail→run FAILED、跨用户分析 404 |
 | HighlightRuleEngineTest | 8 | 纯引擎：证据 reason、窗口计数、边界裁剪、合并上限 30s、同输入同输出、类型过滤、actor 约束 |
+| EdlValidatorTest | 7 | CROP/SOURCE 模式、未知模式拒绝、打码区域越界/负值拒绝、JSON 往返保留 masks |
 | ShareIntegrationTest | 1 | 令牌创建/匿名下载 200/撤销后 410/假令牌 404 |
 
 ## 2. Worker 测试（`media-worker pytest`）
 
-**12 个用例全部通过。** 夹具全部为合成素材（OpenCV 计数器 / testsrc2），文件名与注释均标注 SYNTHETIC。
+**15 个用例全部通过。** 夹具全部为合成素材（OpenCV 计数器 / testsrc2），文件名与注释均标注 SYNTHETIC。
 
 - 探测：时长/分辨率/编码/音轨数解析；无音轨正确报告；非视频文件明确失败
 - 渲染：双段 trim+concat 帧级精度（期望 4.5s ±0.6s 实测通过）、中文字幕（UTF-8 文本文件注入，
@@ -45,6 +46,11 @@ Worker 生成预览+缩略图 → 预览 Range 206 → 跨用户 404 → 手动�
 合成计数器夹具 → 自动分析（真实 RapidOCR）→ SCORE_CHANGE 事件（4–8 个，AUTO+证据）→
 适配器注册表显示 EXPERIMENTAL 且 **verified=false**（不虚构 VERIFIED）→
 候选规则引擎（理由可追溯、边界 0–8s 内）→ 候选接受。
+
+### 阶段3 `run_e2e_phase3.py`：9/9 通过
+SSE 会话鉴权连接 → 上传触发 PROBE 的终态事件经 SSE 推送 → 预览进度百分比实时推送 →
+CROP+打码 EDL 通过校验、越界打码 400 → 渲染成功 → 输出 400×400 铺满、
+打码区域（源坐标 0.25–0.5 经裁剪映射）实测纯黑。
 
 ## 4. 前端 GUI 冒烟（浏览器实测）
 

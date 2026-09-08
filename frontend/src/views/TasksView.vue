@@ -7,6 +7,8 @@ const total = ref(0)
 const page = ref(1)
 const statusFilter = ref('')
 const timer = ref<ReturnType<typeof setTimeout>>()
+const sseConnected = ref(false)
+let eventSource: EventSource | null = null
 
 const statusOptions = ['QUEUED', 'RUNNING', 'CANCEL_REQUESTED', 'SUCCEEDED', 'FAILED', 'CANCELLED']
 
@@ -14,7 +16,35 @@ async function load() {
   const resp = await taskApi.list({ page: page.value, size: 20, status: statusFilter.value || undefined })
   items.value = (resp.data as any).items
   total.value = (resp.data as any).total
-  timer.value = setTimeout(load, 4000) // REST polling (phase 1); SSE arrives in phase 3
+}
+
+// SSE push for live progress (same-origin, cookie session). REST polling stays
+// as the reconnect/fallback source of truth per the architecture docs.
+function connectSse() {
+  if (eventSource) eventSource.close()
+  eventSource = new EventSource('/api/tasks/stream')
+  eventSource.addEventListener('connected', () => {
+    sseConnected.value = true
+  })
+  eventSource.addEventListener('task', (ev) => {
+    try {
+      const payload = JSON.parse((ev as MessageEvent).data)
+      const row = items.value.find((t) => t.id === payload.taskId)
+      if (row) {
+        row.status = payload.status
+        row.progress = payload.progress
+        row.phase = payload.phase || ''
+      } else if (['SUCCEEDED', 'FAILED', 'CANCELLED'].includes(payload.status)) {
+        load() // a terminal event for a task not on the page: refresh
+      }
+    } catch {
+      load()
+    }
+  })
+  eventSource.onerror = () => {
+    sseConnected.value = false
+    // EventSource reconnects automatically; keep a slow REST fallback too
+  }
 }
 
 async function cancel(t: Task) {
@@ -27,8 +57,15 @@ async function retry(t: Task) {
   await load()
 }
 
-onMounted(load)
-onBeforeUnmount(() => timer.value && clearTimeout(timer.value))
+onMounted(() => {
+  load()
+  connectSse()
+  timer.value = setInterval(load, 15000) // slow fallback while SSE is live
+})
+onBeforeUnmount(() => {
+  timer.value && clearInterval(timer.value)
+  eventSource?.close()
+})
 </script>
 
 <template>
