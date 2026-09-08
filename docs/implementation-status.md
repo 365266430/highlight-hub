@@ -66,6 +66,13 @@
 
 ## 当前任务
 - 已完成最终多轮回归（50 后端 + 15 Worker + 31/13/9 三套 E2E）并推送远端。
+- 管理后台（第十九节页面11）：`/api/admin/stats|users|adapters` +
+  前端 `/admin` 页（仅 ADMIN 可见），含实测统计（排队耗时/重试数/渲染成功率/候选决策比/存储占用）、
+  配额调整（低于已用自动钳制）、适配器生命周期管理（VERIFIED 必须附真实游戏评测凭据）。
+- 分析结果复用键（第十四节）：同 media 内容 + 适配器版本 + 合并配置哈希 + 算法版本
+  的已完成 run 直接复用，不重复执行 OCR；配置不同才创建新 run。
+- 初始管理员账号通过 `HIGHLIGHT_HUB_ADMIN_INITIAL_PASSWORD` 环境变量注入
+  （仅启动时无管理员才创建，密码不硬编码不入日志）。
 - 已修复：集成测试基类补充 `@ActiveProfiles("test")`——此前测试套件误指向开发库
   `highlight_hub` 并在其上 TRUNCATE（测试数据隔离缺陷）。修复后验证：
   测试写入 `highlight_hub_test`，开发库数据保持独立；50 个后端用例重跑全绿。
@@ -73,7 +80,7 @@
 
 ## 尚未实现（诚实清单）
 - 事件修订的离线评估管道（用户修正已留痕，未接评估任务）。
-- 全局分析/渲染并发的精细化配置面板（配置项已存在）。
+- 全局分析/渲染并发的精细化配置面板（配置项已存在，管理后台展示统计）。
 - 多源素材工程、多视角对齐、规则比较（阶段4，未开始）。
 
 ## 阻塞
@@ -86,11 +93,12 @@
   推送若因凭据失败将如实记录。
 
 ## 已执行测试（汇总见 docs/test-report.md）
-- backend `mvn test`：50/50 通过（真实 MySQL）
+- backend `mvn test`：55/55 通过（真实 MySQL，独立测试库）
 - media-worker `pytest`：15/15 通过（合成夹具 + 真实 FFmpeg/OCR）
 - `scripts/run_e2e.py`：31/31 通过（两轮）
 - `scripts/run_e2e_phase2.py`：13/13 通过（两轮）
 - `scripts/run_e2e_phase3.py`：9/9 通过（SSE + CROP/打码）
+- `scripts/run_e2e_admin.py`：9/9 通过（管理面 + 访问控制）
 - 前端 GUI 冒烟：通过
 
 ## 下一条具体操作

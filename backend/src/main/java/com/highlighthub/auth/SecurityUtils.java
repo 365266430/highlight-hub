@@ -18,4 +18,10 @@ public final class SecurityUtils {
     public static Long currentUserId() {
         return currentUser().getId();
     }
+
+    public static void requireAdmin() {
+        if (!"ADMIN".equals(currentUser().getRole())) {
+            throw BusinessException.forbidden("administrator role required");
+        }
+    }
 }

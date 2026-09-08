@@ -7,13 +7,19 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const navs = computed(() => [
-  { path: '/', label: '工作台' },
-  { path: '/media', label: '素材库' },
-  { path: '/upload', label: '上传' },
-  { path: '/projects', label: '剪辑工程' },
-  { path: '/tasks', label: '任务中心' }
-])
+const navs = computed(() => {
+  const base = [
+    { path: '/', label: '工作台' },
+    { path: '/media', label: '素材库' },
+    { path: '/upload', label: '上传' },
+    { path: '/projects', label: '剪辑工程' },
+    { path: '/tasks', label: '任务中心' }
+  ]
+  if (auth.user?.role === 'ADMIN') {
+    base.push({ path: '/admin', label: '管理后台' })
+  }
+  return base
+})
 
 async function onLogout() {
   await auth.logout()

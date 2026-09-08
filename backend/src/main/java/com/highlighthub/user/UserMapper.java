@@ -11,6 +11,13 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     @Select("SELECT * FROM users WHERE username = #{username}")
     UserEntity findByUsername(@Param("username") String username);
 
+    @Select("SELECT COUNT(*) FROM users WHERE role = 'ADMIN'")
+    Integer countAdmins();
+
+    @org.apache.ibatis.annotations.Update("UPDATE users SET storage_quota_bytes = #{quota}, updated_at = UTC_TIMESTAMP(3) " +
+            "WHERE id = #{userId}")
+    int updateQuota(@Param("userId") Long userId, @Param("quota") long quota);
+
     /**
      * Conditional quota reservation: only succeeds when the remaining quota covers the bytes.
      * Concurrency-safe (single-statement compare-and-set).

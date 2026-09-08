@@ -53,14 +53,25 @@ public class AnalysisService {
         mediaService.assertStatusReady(media);
         AdapterVersionEntity version = adapterSeeder.requireUsableVersion(adapterVersionId);
         Map<String, Object> params = paramOverrides == null ? new LinkedHashMap<>() : paramOverrides;
+        Map<String, Object> merged = mergedConfig(version, params);
+        String mergedJson = Utils.toJson(merged);
+        String mergedHash = Utils.sha256Hex(mergedJson);
+
+        // result reuse key (spec §14): media content + adapter version + config hash + algorithm version.
+        // an identical finished analysis is returned instead of re-running OCR over the same video.
+        AnalysisRunEntity reusable = runMapper.findReusable(mediaId, version.getId(), mergedHash, ALGORITHM_VERSION);
+        if (reusable != null) {
+            log.info("analysis for media {} with identical config reuses run {}", mediaId, reusable.getId());
+            return reusable;
+        }
 
         AnalysisRunEntity run = new AnalysisRunEntity();
         run.setMediaId(mediaId);
         run.setOwnerId(ownerId);
         run.setAdapterVersionId(version.getId());
         run.setMode("AUTO");
-        run.setParamsJson(Utils.toJson(params));
-        run.setParamsHash(Utils.sha256Hex(run.getParamsJson()));
+        run.setParamsJson(mergedJson);
+        run.setParamsHash(mergedHash);
         run.setAlgorithmVersion(ALGORITHM_VERSION);
         run.setStatus("QUEUED");
         run.setCreatedAt(Utils.utcNow());
@@ -71,7 +82,7 @@ public class AnalysisService {
         payload.put("mediaId", mediaId);
         payload.put("mediaStorageKey", media.getStorageKey());
         payload.put("adapterVersionId", version.getId());
-        payload.put("config", mergedConfig(version, params));
+        payload.put("config", merged);
         var task = taskService.create("ANALYZE", ownerId, run.getId(), version.getId(), payload);
         run.setTaskId(task.getId());
         runMapper.updateById(run);
