@@ -114,6 +114,10 @@ public abstract class AbstractIntegrationTest {
             return exchange(HttpMethod.PUT, path, body);
         }
 
+        public ResponseEntity<String> patch(String path, Object body) {
+            return exchange(HttpMethod.PATCH, path, body);
+        }
+
         public ResponseEntity<String> get(String path) {
             return exchange(HttpMethod.GET, path, null);
         }

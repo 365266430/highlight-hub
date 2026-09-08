@@ -68,6 +68,8 @@ def run_task(task: dict, client: JavaClient, progress, cancel_requested) -> dict
                 return _render(task_id, payload, progress, cancel_requested)
             if task_type == "CLEANUP":
                 return _cleanup(payload)
+            if task_type == "ANALYZE":
+                return _analyze(task_id, payload, progress, cancel_requested)
             return {"ok": False, "error": f"unsupported task type {task_type}"}
         except Abort:
             raise
@@ -230,6 +232,42 @@ def _render(task_id: str, payload: dict, progress, cancel_requested) -> dict:
         "width": out_info["width"],
         "height": out_info["height"],
     }
+
+
+def _analyze(task_id: str, payload: dict, progress, cancel_requested) -> dict:
+    from . import analyze
+    progress(2, "analyzing")
+    src = _source_path(payload)
+    if not os.path.exists(src):
+        return {"ok": False, "errorCode": "INVALID_INPUT", "errorMessage": "source file missing",
+                "retryable": False}
+    cfg = payload.get("config") or {}
+    run_id = payload["analysisRunId"]
+    evidence_rel = f"evidence/{run_id}"
+    evidence_abs = config.storage_path(evidence_rel)
+    os.makedirs(evidence_abs, exist_ok=True)
+    events: list[dict] = []
+
+    def on_event(ev, evidence_path):
+        ev = dict(ev)
+        rel_key = f"{evidence_rel}/{os.path.basename(evidence_path)}"
+        ev["evidenceStorageKey"] = rel_key
+        try:
+            ev["evidenceSize"] = os.path.getsize(evidence_path)
+        except OSError:
+            ev["evidenceSize"] = 0
+        events.append(ev)
+
+    summary = analyze.analyze_stream(src, cfg, progress, cancel_requested, on_event, evidence_abs)
+    if summary.get("cancelled"):
+        return {"ok": False, "cancelled": True}
+    if not summary.get("ok"):
+        return summary
+    _cleanup_tmp(task_id)
+    progress(100, "analysis complete")
+    return {"ok": True, "events": events,
+            "samplesProcessed": summary.get("samplesProcessed", 0),
+            "eventsEmitted": summary.get("eventsEmitted", 0)}
 
 
 def _cleanup(payload: dict) -> dict:
